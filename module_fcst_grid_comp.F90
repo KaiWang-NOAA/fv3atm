@@ -1230,6 +1230,9 @@ if (rc /= ESMF_SUCCESS) write(0,*) 'rc=',rc,__FILE__,__LINE__; if(ESMF_LogFoundE
 !
       integer                    :: mype, date(6), seconds
       character(len=64)          :: timestamp
+!added by Kai Wang for ML transport run
+      character(len=2)           :: tflg
+!Kai Wang
       integer                    :: unit
       real(kind=8)               :: mpi_wtime, tbeg1
 !
@@ -1244,6 +1247,15 @@ if (rc /= ESMF_SUCCESS) write(0,*) 'rc=',rc,__FILE__,__LINE__; if(ESMF_LogFoundE
 !
       call ESMF_GridCompGet(fcst_comp, localpet=mype, rc=rc)
       if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
+
+!Kai Wang for full emulation
+      call get_time(Atmos%Time - Atmos%Time_init, seconds)
+      n_atmsteps = seconds/dt_atmos
+
+      timestamp = date_to_string (Atmos%Time)
+      read(timestamp(12:13),'(a2)')tflg
+!Kai Wang
+
 !
 !-----------------------------------------------------------------------
 ! *** call fcst integration subroutines
@@ -1253,6 +1265,11 @@ if (rc /= ESMF_SUCCESS) write(0,*) 'rc=',rc,__FILE__,__LINE__; if(ESMF_LogFoundE
 
       call update_atmos_model_state (Atmos, rc=rc)
       if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
+      
+      ! -- Kai Wang write output restart every 30 minutes for ML transport
+      if (( tflg .eq. "00" .or. tflg .eq. "30" ) .and. (n_atmsteps .ge. 1 )) then
+      call atmos_model_restart(Atmos, timestamp)
+      endif
 
       !--- intermediate restart
       if (intrm_rst>0) then
